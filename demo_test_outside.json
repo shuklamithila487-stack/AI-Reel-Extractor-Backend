@@ -1,0 +1,109 @@
+[
+    {
+        "name": "Sign Up",
+        "endpoint": "/api/v1/auth/signup",
+        "method": "POST",
+        "description": "Create a new user account",
+        "payload": {
+            "email": "testuser@example.com",
+            "password": "SecurePassword123!",
+            "full_name": "Test User",
+            "company_name": "Test Company",
+            "phone": "+91-9876543210"
+        },
+        "curl": "curl -X 'POST' 'http://localhost:8000/api/v1/auth/signup' -H 'accept: application/json' -H 'Content-Type: application/json' -d '{\"email\": \"testuser@example.com\", \"password\": \"SecurePassword123!\", \"full_name\": \"Test User\", \"company_name\": \"Test Company\", \"phone\": \"+91-9876543210\"}'"
+    },
+    {
+        "name": "Login (Get Token)",
+        "endpoint": "/api/v1/auth/login/access-token",
+        "method": "POST",
+        "description": "Get access token (form-data)",
+        "payload": {
+            "username": "testuser@example.com",
+            "password": "SecurePassword123!"
+        },
+        "curl": "curl -X 'POST' 'http://localhost:8000/api/v1/auth/login/access-token' -H 'accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=&username=testuser%40example.com&password=SecurePassword123!&scope=&client_id=&client_secret='"
+    },
+    {
+        "name": "Get User Profile (Me)",
+        "endpoint": "/api/v1/users/me",
+        "method": "GET",
+        "description": "Get current user details (Requires Token)",
+        "headers": {
+            "Authorization": "Bearer <YOUR_ACCESS_TOKEN>"
+        },
+        "curl": "curl -X 'GET' 'http://localhost:8000/api/v1/users/me' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'"
+    },
+    {
+        "name": "Update User Profile",
+        "endpoint": "/api/v1/users/me",
+        "method": "PUT",
+        "description": "Update user details",
+        "payload": {
+            "full_name": "Updated User Name",
+            "company_name": "Updated Company Pvt Ltd"
+        },
+        "curl": "curl -X 'PUT' 'http://localhost:8000/api/v1/users/me' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' -H 'Content-Type: application/json' -d '{\"full_name\": \"Updated User Name\", \"company_name\": \"Updated Company Pvt Ltd\"}'"
+    },
+    {
+        "name": "Upload Video",
+        "endpoint": "/api/v1/videos/upload",
+        "method": "POST",
+        "description": "Upload a video file directly",
+        "headers": {
+            "Authorization": "Bearer <YOUR_ACCESS_TOKEN>"
+        },
+        "curl": "curl -X 'POST' 'http://localhost:8000/api/v1/videos/upload' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' -H 'Content-Type: multipart/form-data' -F 'file=@/path/to/your/video.mp4'"
+    },
+    {
+        "name": "Get Videos List",
+        "endpoint": "/api/v1/videos/",
+        "method": "GET",
+        "description": "List uploaded videos",
+        "curl": "curl -X 'GET' 'http://localhost:8000/api/v1/videos/?skip=0&limit=10' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'"
+    },
+    {
+        "name": "Get Video Details",
+        "endpoint": "/api/v1/videos/{video_id}",
+        "method": "GET",
+        "description": "Get specific video details",
+        "curl": "curl -X 'GET' 'http://localhost:8000/api/v1/videos/c538d925-e16a-4372-b04e-9896e6acbaff' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'"
+    },
+    {
+        "name": "Get Extraction Suggestions",
+        "endpoint": "/api/v1/extractions/suggest/{video_id}",
+        "method": "GET",
+        "description": "Get suggested columns for a video",
+        "curl": "curl -X 'GET' 'http://localhost:8000/api/v1/extractions/suggest/c538d925-e16a-4372-b04e-9896e6acbaff' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'"
+    },
+    {
+        "name": "Request Data Extraction",
+        "endpoint": "/api/v1/extractions/extract/{video_id}",
+        "method": "POST",
+        "description": "Extract data from video using specific columns",
+        "payload": {
+            "selected_columns": [
+                "Title",
+                "Price",
+                "Location",
+                "BHK",
+                "Amenities"
+            ]
+        },
+        "curl": "curl -X 'POST' 'http://localhost:8000/api/v1/extractions/extract/c538d925-e16a-4372-b04e-9896e6acbaff' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>' -H 'Content-Type: application/json' -d '{\"selected_columns\": [\"Title\", \"Price\", \"Location\", \"BHK\", \"Amenities\"]}'"
+    },
+    {
+        "name": "Get Extraction History",
+        "endpoint": "/api/v1/extractions/history/{video_id}",
+        "method": "GET",
+        "description": "Get history of extractions for a video",
+        "curl": "curl -X 'GET' 'http://localhost:8000/api/v1/extractions/history/c538d925-e16a-4372-b04e-9896e6acbaff' -H 'accept: application/json' -H 'Authorization: Bearer <YOUR_ACCESS_TOKEN>'"
+    },
+    {
+        "name": "Mock Cloudinary Webhook",
+        "endpoint": "/api/v1/webhooks/cloudinary",
+        "method": "POST",
+        "description": "Simulate upload complete notification from Cloudinary",
+        "curl": "curl -X 'POST' 'http://localhost:8000/api/v1/webhooks/cloudinary' -H 'Content-Type: application/json' -d '{\"notification_type\": \"upload\", \"public_id\": \"pipeline/c538d925-e16a-4372-b04e-9896e6acbaff/video\", \"secure_url\": \"https://res.cloudinary.com/demo/video/upload/dog.mp4\", \"duration\": 12, \"original_filename\": \"dog\", \"resource_type\": \"video\"}'"
+    }
+]

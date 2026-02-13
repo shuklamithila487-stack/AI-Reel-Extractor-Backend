@@ -84,6 +84,14 @@ class TokenResponse(BaseModel):
     }
 
 
+class TokenPayload(BaseModel):
+    """
+    JWT token payload schema.
+    """
+    sub: Optional[str] = None
+    exp: Optional[int] = None
+
+
 class LoginResponse(BaseModel):
     """
     Complete login response with user and token.
@@ -203,3 +211,10 @@ class LogoutResponse(BaseModel):
     """
     success: bool = True
     message: str = "Logged out successfully"
+
+
+class Token(TokenResponse):
+    """
+    Token schema alias.
+    """
+    pass

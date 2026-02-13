@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # CLAUDE API
     # ===================================
     # ANTHROPIC_API_KEY: str = Field(..., description="Anthropic API key (required)")
-    # CLAUDE_MODEL: str = Field(default="claude-sonnet-4-20250514", description="Claude model version")
+    # CLAUDE_MODEL: str = Field(default="claude-3-sonnet-20240229", description="Claude model version")
     # CLAUDE_MAX_TOKENS: int = Field(default=4000, description="Max tokens for Claude API")
     OPENAI_API_KEY: str = Field(..., description="OpenAI API key (required)")
     OPENAI_MODEL: str = Field(default="gpt-4o-mini", description="OpenAI model version")
