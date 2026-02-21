@@ -97,6 +97,13 @@ class Settings(BaseSettings):
     SENDGRID_API_KEY: str = Field(..., description="SendGrid API key (required)")
     SENDGRID_FROM_EMAIL: str = Field(..., description="From email address (required)")
     SENDGRID_FROM_NAME: str = Field(default="Reel Intelligence", description="From name")
+
+    # ===================================
+    # AIRTABLE
+    # ===================================
+    AIRTABLE_API_KEY: Optional[str] = Field(None, description="Airtable API key")
+    AIRTABLE_BASE_ID: Optional[str] = Field(None, description="Airtable Base ID")
+    AIRTABLE_TABLE_NAME: Optional[str] = Field(None, description="Airtable Table Name")
     
     # Email expiration
     EMAIL_VERIFICATION_EXPIRE_HOURS: int = Field(default=24, description="Email verification link expiry")

@@ -33,6 +33,7 @@ jinja2
 # API Integrations
 anthropic
 httpx
+openai
 
 # Video/Audio Processing
 moviepy

@@ -19,6 +19,7 @@ from app.services import (
     extraction_service,
     video_service,
     email_service,
+    airtable_service,
 )
 from app.core.logging import get_logger
 
@@ -295,6 +296,9 @@ def extract_data_task(video_id: str, selected_columns: List[str], user_id: str):
         # Send success email
         _send_success_notification(video_id, extraction.id, db)
         
+        # Trigger Airtable Sync
+        sync_airtable_task(video_id)
+        
     except Exception as e:
         logger.error(
             "Data extraction failed",
@@ -448,3 +452,37 @@ def _send_failure_notification(video: Video, error_message: str, db: Session):
         
     except Exception as e:
         logger.error("Failed to queue failure notification", error=str(e))
+@task()
+def sync_airtable_task(video_id: str):
+    """
+    Background task to sync current aggregated video data to Airtable.
+    """
+    db = SessionLocal()
+    try:
+        from app.services import video_service, airtable_service
+        
+        # Get full aggregated status (includes merged extracted_data)
+        status = video_service.get_video_status(video_id, db)
+        if not status or not status.get("extracted_data"):
+            logger.warning("Airtable sync: No data to sync", video_id=video_id)
+            return
+
+        # Prepare payload: clean "Not mentioned" etc for cleaner Airtable records
+        clean_data = {}
+        for k, v in status["extracted_data"].items():
+            if v and str(v).strip().lower() not in ["not mentioned", "n/a", "not found", "unknown"]:
+                clean_data[k] = v
+        
+        if not clean_data:
+            logger.info("Airtable sync: No meaningful data to sync", video_id=video_id)
+            return
+
+        logger.info("Syncing to Airtable...", video_id=video_id)
+        # We need to run the async sync function in a sync context
+        import asyncio
+        asyncio.run(airtable_service.sync_to_airtable(clean_data, video_id))
+        
+    except Exception as e:
+        logger.error("Airtable sync task failed", error=str(e), video_id=video_id)
+    finally:
+        db.close()
