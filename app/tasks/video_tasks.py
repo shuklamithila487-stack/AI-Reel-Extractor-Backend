@@ -121,12 +121,31 @@ def process_video_pipeline(video_id: str):
             _send_failure_notification(video, str(e), db)
             return
         
-        # Step 3: Suggest columns using OpenAI
-        logger.info("Suggesting columns", video_id=video_id)
+        # Step 3: Suggest columns using OpenAI and Generate Metadata
+        logger.info("Suggesting columns and generating metadata", video_id=video_id)
         try:
             # Run async function in sync context
-            suggested_columns = asyncio.run(
-                openai_service.suggest_columns_from_transcript(transcript)
+            suggested_columns = [
+                "Property Type", 
+                "Location", 
+                "Price/Rent", 
+                "Size/Area", 
+                "Property Status (Rent/Sale)", 
+                "Furnishing", 
+                "Amenities", 
+                "Property Condition"
+            ]
+            
+            metadata = asyncio.run(
+                openai_service.generate_video_metadata(transcript)
+            )
+            
+            video_service.update_video_status(
+                video_id=video_id,
+                status="transcribing",  # Still transcribing logically until thumbnail
+                db=db,
+                title=metadata.get("title"),
+                description=metadata.get("description")
             )
             
             # Create initial extraction record with suggestions
@@ -139,9 +158,25 @@ def process_video_pipeline(video_id: str):
             
             db.add(extraction)
             db.commit()
+
+            # NEW: Immediately trigger the first extraction with default core columns 
+            # so the user sees data right away after upload processing.
+            try:
+                # We need to run this async in a sync context
+                from app.services.extraction_service import extract_data
+                asyncio.run(extract_data(
+                    video_id=video_id,
+                    selected_columns=suggested_columns,
+                    user_id=str(video.user_id),
+                    db=db,
+                    extraction_number=0
+                ))
+                logger.info("Automatic initial extraction completed", video_id=video_id)
+            except Exception as auto_ext_err:
+                logger.error("Automatic initial extraction failed", error=str(auto_ext_err), video_id=video_id)
             
             logger.info(
-                "Columns suggested",
+                "Columns suggested and auto-extracted",
                 video_id=video_id,
                 column_count=len(suggested_columns)
             )
@@ -267,11 +302,13 @@ def extract_data_task(video_id: str, selected_columns: List[str], user_id: str):
             error=str(e)
         )
         
-        # Mark as failed
-        video_service.mark_video_failed(
+        # Don't mark as globally FAILED for manual extraction issues
+        # Revert to completed so the video remains accessible/healthy on dashboard
+        video_service.update_video_status(
             video_id=video_id,
-            error_message=f"Extraction failed: {str(e)}",
-            db=db
+            status="completed",
+            db=db,
+            error_message=f"Extraction Error: {str(e)}"
         )
         
         # Send failure email

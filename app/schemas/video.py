@@ -56,11 +56,16 @@ class VideoStatus(BaseModel):
     
     # Available after extraction
     extracted_data: Optional[Dict[str, Any]] = None
+    transcript: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
     
     # Re-extraction info
     can_re_extract: bool = False
     extractions_remaining: int = 3
     extraction_count: int = 0
+    suggestions_remaining: int = 3
+    suggestions_count: int = 0
     
     # Error info
     error_message: Optional[str] = None
@@ -108,6 +113,9 @@ class VideoResponse(BaseModel):
     file_size_mb: Optional[float] = None
     original_filename: Optional[str] = None
     
+    title: Optional[str] = None
+    description: Optional[str] = None
+    
     # Latest extraction data
     latest_extraction: Optional[Dict[str, Any]] = None
     
@@ -142,6 +150,7 @@ class VideoListItem(BaseModel):
     
     # Extracted title (if available)
     title: Optional[str] = None
+    description: Optional[str] = None
     
     model_config = {
         "from_attributes": True

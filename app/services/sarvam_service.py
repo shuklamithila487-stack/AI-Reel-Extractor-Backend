@@ -96,6 +96,12 @@ def split_audio_into_chunks(
         
         return chunks
         
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            logger.error("Audio URL not found", url=audio_url)
+            raise SarvamError("Audio file could not be found or is inaccessible (404)")
+        logger.error("HTTP error during audio download", error=str(e))
+        raise SarvamError(f"HTTP error during audio download: {str(e)}")
     except Exception as e:
         logger.error("Failed to split audio", error=str(e))
         raise SarvamError(f"Failed to split audio: {str(e)}")
@@ -257,6 +263,10 @@ def transcribe_audio(
         # Concatenate transcripts
         full_transcript = " ".join(transcripts).strip()
         
+        if not full_transcript:
+            logger.warning("No speech detected in audio - possibly music or silence")
+            raise SarvamError("No speech detected in audio. It appears to be music or silence.")
+
         logger.info(
             "Transcription completed",
             transcript_length=len(full_transcript),

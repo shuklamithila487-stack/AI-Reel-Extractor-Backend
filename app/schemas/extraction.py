@@ -2,9 +2,10 @@
 Data extraction Pydantic schemas.
 """
 
-from pydantic import BaseModel, Field,field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from uuid import UUID
 
 
 class ColumnSuggestion(BaseModel):
@@ -19,6 +20,10 @@ class ColumnSuggestion(BaseModel):
         ge=0.0,
         le=1.0,
         description="Confidence score for suggestions"
+    )
+    suggestions_remaining: Optional[int] = Field(
+        None,
+        description="Number of suggestion cycles remaining"
     )
     
     model_config = {
@@ -90,8 +95,8 @@ class ExtractionResponse(BaseModel):
     """
     Extraction result response.
     """
-    id: str
-    video_id: str
+    id: UUID
+    video_id: UUID
     extracted_data: Dict[str, Any]
     extraction_number: int
     selected_columns: List[str]
@@ -122,7 +127,7 @@ class ExtractionHistoryItem(BaseModel):
     """
     Single extraction in history.
     """
-    id: str
+    id: UUID
     extraction_number: int
     selected_columns: List[str]
     extracted_data: Dict[str, Any]
@@ -137,7 +142,7 @@ class ExtractionHistory(BaseModel):
     """
     Complete extraction history for a video.
     """
-    video_id: str
+    video_id: UUID
     extractions: List[ExtractionHistoryItem]
     total_extractions: int
     extractions_remaining: int
@@ -219,8 +224,8 @@ class DetailedExtractionResponse(BaseModel):
     """
     Extraction response with field-level details.
     """
-    id: str
-    video_id: str
+    id: UUID
+    video_id: UUID
     extraction_number: int
     fields: List[ExtractedField]
     overall_confidence: float

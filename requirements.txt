@@ -20,6 +20,7 @@ pydantic-settings
 # Background Jobs
 huey
 redis
+peewee
 
 # Cloud Services
 cloudinary

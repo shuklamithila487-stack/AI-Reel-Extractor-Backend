@@ -1,37 +1,15 @@
 #!/bin/bash
+# start.sh
 
-# Start script for production deployment
-# Starts both Gunicorn (API) and Huey (worker)
-
-set -e  # Exit on error
-
-echo "Starting Reel Intelligence Backend..."
-
-# Run database migrations
+# Run migrations
 echo "Running database migrations..."
 alembic upgrade head
 
-# Start Huey worker in background
-echo "Starting Huey worker..."
-huey_consumer app.tasks.huey_config.huey \
-    --workers $HUEY_WORKERS \
-    --worker-type process \
-    --logfile huey.log &
+# Start Huey consumer in the background
+echo "Starting Huey consumer..."
+huey_consumer app.tasks.huey_config.huey --workers 2 &
 
-# Start Gunicorn with Uvicorn workers
-echo "Starting Gunicorn..."
-gunicorn app.main:app \
-    --workers 2 \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:${PORT:-5000} \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile - \
-    --log-level info
-```
-
----
-
-## Procfile (for Railway)
-```
-web: bash start.sh
+# Start FastAPI application
+echo "Starting FastAPI server..."
+# Using gunicorn with uvicorn workers for production stability
+gunicorn -w 2 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:$PORT

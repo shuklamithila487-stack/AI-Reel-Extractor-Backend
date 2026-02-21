@@ -39,6 +39,8 @@ class Video(Base):
     
     # Metadata
     original_filename = Column(String(255), nullable=True)
+    title = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
     
     # Status
     status = Column(
@@ -50,6 +52,7 @@ class Video(Base):
     
     # Error handling
     retry_count = Column(Integer, default=0)
+    suggestion_count = Column(Integer, default=0)
     error_message = Column(Text, nullable=True)
     last_error_at = Column(DateTime, nullable=True)
     
@@ -82,8 +85,10 @@ class Video(Base):
         return self.transcript is not None and len(self.transcript) > 0
     
     def get_extraction_count(self) -> int:
-        """Get number of extractions for this video."""
-        return len(self.extractions) if self.extractions else 0
+        """Get number of extractions for this video (excluding suggestions)."""
+        if not self.extractions:
+            return 0
+        return len([e for e in self.extractions if e.extraction_number > 0])
     
     def can_re_extract(self, max_extractions: int = 3) -> bool:
         """Check if video can be re-extracted."""

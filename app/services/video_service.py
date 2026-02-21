@@ -151,41 +151,43 @@ def upload_video_from_file(file: Any, user_id: str, db: Session, filename: str =
 # VIDEO STATUS
 # ===================================
 
-def get_video_status(video_id: str, user_id: str, db: Session) -> Dict[str, Any]:
+def get_video_status(video_id: str, user_id: Optional[str], db: Session) -> Dict[str, Any]:
     """
     Get video processing status.
     
     Args:
         video_id: Video ID
-        user_id: User ID (for authorization)
+        user_id: User ID (optional, if None allows access to any video)
         db: Database session
-        
-    Returns:
-        Video status dictionary
-        
-    Raises:
-        VideoError: If video not found or unauthorized
     """
     try:
         # Get video
-        video = db.query(Video).filter(
-            Video.id == video_id,
-            Video.user_id == user_id
-        ).first()
+        query = db.query(Video).filter(Video.id == video_id)
+        if user_id:
+            query = query.filter(Video.user_id == user_id)
+        
+        video = query.first()
         
         if not video:
             raise VideoError("Video not found or unauthorized")
         
         # Get extractions
-        extractions = db.query(Extraction).filter(
+        all_extractions = db.query(Extraction).filter(
             Extraction.video_id == video_id
-        ).order_by(Extraction.created_at.desc()).all()
+        ).all()
         
-        extraction_count = len(extractions)
+        # Actual user extractions
+        user_extractions = [e for e in all_extractions if e.extraction_number > 0]
+        user_extractions.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Suggestion record (number 0)
+        latest_extraction = next((e for e in all_extractions if e.extraction_number == 0), None)
+        # If no suggestion record, use latest user extraction for suggestions if available
+        if not latest_extraction and user_extractions:
+            latest_extraction = user_extractions[0]
+            
+        extraction_count = len(user_extractions)
         extractions_remaining = max(0, settings.MAX_EXTRACTIONS_PER_VIDEO - extraction_count)
-        
-        # Get latest extraction
-        latest_extraction = extractions[0] if extractions else None
         
         # Build progress object
         progress = {
@@ -196,25 +198,35 @@ def get_video_status(video_id: str, user_id: str, db: Session) -> Dict[str, Any]
             "extraction_complete": video.status == "completed"
         }
         
-        # Get suggested columns (from latest extraction)
+        # Get suggested columns
         suggested_columns = None
         if latest_extraction and latest_extraction.suggested_columns:
             suggested_columns = latest_extraction.suggested_columns
         
-        # Get extracted data (from latest extraction)
-        extracted_data = None
-        if latest_extraction and latest_extraction.extracted_data:
-            extracted_data = latest_extraction.extracted_data
+        # Get extracted data (MERGED from all extractions, starting from baseline)
+        all_extracted_data = {}
+        # Iterate from oldest to newest across ALL extractions (including extraction_number 0) 
+        # so later extractions additive-ly overwrite or add to the earlier baseline.
+        for ext in sorted(all_extractions, key=lambda x: x.created_at):
+            if ext.extracted_data:
+                all_extracted_data.update(ext.extracted_data)
         
         return {
             "video_id": str(video.id),
+            "video_url": video.video_url,
+            "thumbnail_url": video.thumbnail_url,
             "status": video.status,
             "progress": progress,
             "suggested_columns": suggested_columns,
-            "extracted_data": extracted_data,
+            "extracted_data": all_extracted_data,
+            "transcript": video.transcript,
+            "title": video.title,
+            "description": video.description,
             "can_re_extract": video.can_re_extract(settings.MAX_EXTRACTIONS_PER_VIDEO),
             "extractions_remaining": extractions_remaining,
             "extraction_count": extraction_count,
+            "suggestions_remaining": max(0, 3 - video.suggestion_count),
+            "suggestions_count": video.suggestion_count,
             "error_message": video.error_message,
             "retry_count": video.retry_count,
             "created_at": video.created_at,
@@ -233,15 +245,16 @@ def get_video_status(video_id: str, user_id: str, db: Session) -> Dict[str, Any]
 # ===================================
 
 def list_user_videos(
-    user_id: str,
+    user_id: Optional[str],
     filters: VideoFilterParams,
     db: Session
 ) -> Tuple[List[Video], int]:
     """
-    List user's videos with filters and pagination.
+    List videos with filters and pagination.
+    If user_id is provided, filter by user. If None, return all videos (admin/public view).
     
     Args:
-        user_id: User ID
+        user_id: User ID (optional)
         filters: Filter parameters
         db: Database session
         
@@ -250,7 +263,11 @@ def list_user_videos(
     """
     try:
         # Base query
-        query = db.query(Video).filter(Video.user_id == user_id)
+        query = db.query(Video)
+        
+        # Filter by user if provided
+        if user_id:
+            query = query.filter(Video.user_id == user_id)
         
         # Apply status filter
         if filters.status and filters.status != "all":
@@ -311,26 +328,21 @@ def list_user_videos(
 # VIDEO DETAILS
 # ===================================
 
-def get_video_details(video_id: str, user_id: str, db: Session) -> Video:
+def get_video_details(video_id: str, user_id: Optional[str], db: Session) -> Video:
     """
     Get detailed video information.
     
     Args:
         video_id: Video ID
-        user_id: User ID (for authorization)
+        user_id: User ID (optional)
         db: Database session
-        
-    Returns:
-        Video object with relationships loaded
-        
-    Raises:
-        VideoError: If video not found
     """
     try:
-        video = db.query(Video).filter(
-            Video.id == video_id,
-            Video.user_id == user_id
-        ).first()
+        query = db.query(Video).filter(Video.id == video_id)
+        if user_id:
+            query = query.filter(Video.user_id == user_id)
+            
+        video = query.first()
         
         if not video:
             raise VideoError("Video not found or unauthorized")

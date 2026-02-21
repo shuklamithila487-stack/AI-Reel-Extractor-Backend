@@ -65,7 +65,8 @@ async def extract_data(
     video_id: str,
     selected_columns: List[str],
     user_id: str,
-    db: Session
+    db: Session,
+    extraction_number: Optional[int] = None
 ) -> Extraction:
     """
     Extract data from video transcript using selected columns.
@@ -86,21 +87,20 @@ async def extract_data(
         from app.services.openai_service import extract_fields_from_transcript
         
         # Get video
-        video = db.query(Video).filter(
-            Video.id == video_id,
-            Video.user_id == user_id
-        ).first()
+        # Allow any video for global access
+        video = db.query(Video).filter(Video.id == video_id).first()
         
         if not video:
-            raise ExtractionError("Video not found or unauthorized")
+            raise ExtractionError("Video not found")
         
         # Check if video has transcript
         if not video.can_extract():
             raise ExtractionError("Video transcript not available")
         
-        # Check extraction limit
+        # Check extraction limit (exclude suggestion-only record 0)
         extraction_count = db.query(Extraction).filter(
-            Extraction.video_id == video_id
+            Extraction.video_id == video_id,
+            Extraction.extraction_number > 0
         ).count()
         
         if extraction_count >= settings.MAX_EXTRACTIONS_PER_VIDEO:
@@ -121,13 +121,45 @@ async def extract_data(
             columns=selected_columns
         )
         
+        # Combine data with ALL previous extractions to ensure nothing is lost
+        all_previous_extractions = db.query(Extraction).filter(
+            Extraction.video_id == video_id,
+            Extraction.extraction_number > 0
+        ).all()
+        
+        merged_data = {}
+        for prev in all_previous_extractions:
+            if prev.extracted_data:
+                merged_data.update(prev.extracted_data)
+        
+        # Add the new ones (latest takes precedence)
+        merged_data.update(extracted_data)
+        
+        if extraction_number is not None:
+            # Update existing or create with specific number (usually for initial pass 0)
+            extraction = db.query(Extraction).filter(
+                Extraction.video_id == video_id,
+                Extraction.extraction_number == extraction_number
+            ).first()
+            
+            if extraction:
+                extraction.selected_columns = selected_columns
+                extraction.extracted_data = extracted_data
+                db.commit()
+                db.refresh(extraction)
+                return extraction
+            
+            num_to_set = extraction_number
+        else:
+            num_to_set = extraction_count + 1
+
         # Create extraction record
         extraction = Extraction(
             video_id=video_id,
             user_id=user_id,
             selected_columns=selected_columns,
-            extracted_data=extracted_data,
-            extraction_number=extraction_count + 1
+            extracted_data=extracted_data, # Store only what was requested this time in the record
+            extraction_number=num_to_set
         )
         
         db.add(extraction)
@@ -157,7 +189,7 @@ async def extract_data(
 
 def get_extraction_history(
     video_id: str,
-    user_id: str,
+    user_id: Optional[str],
     db: Session
 ) -> List[Extraction]:
     """
@@ -165,7 +197,7 @@ def get_extraction_history(
     
     Args:
         video_id: Video ID
-        user_id: User ID (for authorization)
+        user_id: User ID (optional)
         db: Database session
         
     Returns:
@@ -176,15 +208,13 @@ def get_extraction_history(
     """
     try:
         # Verify video ownership
-        video = db.query(Video).filter(
-            Video.id == video_id,
-            Video.user_id == user_id
-        ).first()
+        video = db.query(Video).filter(Video.id == video_id).first()
         
         if not video:
-            raise ExtractionError("Video not found or unauthorized")
+            raise ExtractionError("Video not found")
         
         # Get extractions
+        # For MVP Global View: Show all extractions
         extractions = db.query(Extraction).filter(
             Extraction.video_id == video_id
         ).order_by(Extraction.created_at.desc()).all()
@@ -200,7 +230,7 @@ def get_extraction_history(
 
 def get_latest_extraction(
     video_id: str,
-    user_id: str,
+    user_id: Optional[str],
     db: Session
 ) -> Optional[Extraction]:
     """
@@ -208,7 +238,7 @@ def get_latest_extraction(
     
     Args:
         video_id: Video ID
-        user_id: User ID
+        user_id: User ID (optional)
         db: Database session
         
     Returns:
@@ -216,8 +246,7 @@ def get_latest_extraction(
     """
     try:
         extraction = db.query(Extraction).filter(
-            Extraction.video_id == video_id,
-            Extraction.user_id == user_id
+            Extraction.video_id == video_id
         ).order_by(Extraction.created_at.desc()).first()
         
         return extraction
@@ -247,7 +276,8 @@ def validate_extraction_limit(
     """
     try:
         count = db.query(Extraction).filter(
-            Extraction.video_id == video_id
+            Extraction.video_id == video_id,
+            Extraction.extraction_number > 0
         ).count()
         
         return count < settings.MAX_EXTRACTIONS_PER_VIDEO
@@ -270,7 +300,8 @@ def get_extractions_remaining(video_id: str, db: Session) -> int:
     """
     try:
         count = db.query(Extraction).filter(
-            Extraction.video_id == video_id
+            Extraction.video_id == video_id,
+            Extraction.extraction_number > 0
         ).count()
         
         remaining = max(0, settings.MAX_EXTRACTIONS_PER_VIDEO - count)

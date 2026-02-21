@@ -268,6 +268,75 @@ def validate_extraction_quality(extracted_data: Dict[str, Any]) -> float:
 
 
 # ===================================
+# METADATA GENERATION
+# ===================================
+
+async def generate_video_metadata(transcript: str) -> Dict[str, str]:
+    """
+    Generate a precise title and short description for the video based on its transcript.
+    """
+    try:
+        prompt = f"""Generate a crisp, attractive title and a short description (2-3 sentences max) for a real estate listing based on this transcript:
+
+Transcript:
+{truncate_transcript(transcript)}
+
+Return ONLY a JSON object with keys "title" and "description"."""
+
+        response = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a real estate assistant that writes titles and descriptions."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=200,
+            temperature=0.3
+        )
+        response_text = response.choices[0].message.content.strip()
+
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+        
+        metadata = json.loads(response_text)
+        return dict(
+            title=metadata.get("title", "Unknown Real Estate Lead"),
+            description=metadata.get("description", "No description generated.")
+        )
+    except Exception as e:
+        logger.error("Failed to generate metadata", error=str(e))
+        return dict(
+            title="Real Estate Listing",
+            description="Transcription captured but metadata generation failed."
+        )
+
+
+# ===================================
+# TRANSLATION
+# ===================================
+
+async def translate_transcript_to_english(transcript: str) -> str:
+    """
+    Translate the given transcript to English using OpenAI API.
+    """
+    try:
+        response = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are a professional translator. Translate the following text into English. If it is already in English, just return it as is or correct any grammar easily. Output only the translated text."},
+                {"role": "user", "content": truncate_transcript(transcript)}
+            ],
+            max_tokens=settings.OPENAI_MAX_TOKENS,
+            temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logger.error("Failed to translate transcript", error=str(e))
+        raise OpenAIServiceError(f"Translation failed: {str(e)}")
+
+
+# ===================================
 # HELPER FUNCTIONS
 # ===================================
 

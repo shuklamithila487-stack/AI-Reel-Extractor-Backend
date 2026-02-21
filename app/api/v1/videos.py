@@ -74,7 +74,7 @@ def list_videos(
     )
     
     videos, total = video_service.list_user_videos(
-        user_id=str(current_user.id),
+        user_id=None, # Showing all videos for MVP
         filters=filters,
         db=db
     )
@@ -101,7 +101,7 @@ def get_video_status(
     """
     Get video status and details.
     """
-    return video_service.get_video_status(video_id, str(current_user.id), db)
+    return video_service.get_video_status(video_id, None, db)
 
 
 @router.delete("/{video_id}", response_model=video_schemas.VideoDeleteResponse)
@@ -127,14 +127,32 @@ def trigger_extraction(
     """
     Trigger data extraction for a video.
     """
-    # Verify video exists and belongs to user
-    video = video_service.get_video_details(video_id, str(current_user.id), db)
+    # Verify video exists
+    video = video_service.get_video_details(video_id, None, db)
     
     # Trigger background task
     video_tasks.extract_data_task(
         video_id, 
-        str(current_user.id), 
-        extraction_request.selected_columns
+        extraction_request.selected_columns,
+        str(current_user.id)
     )
     
     return {"message": "Extraction started"}
+
+
+@router.post("/{video_id}/translate")
+async def translate_transcript(
+    video_id: str,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Translate a video transcript to English.
+    """
+    video = video_service.get_video_details(video_id, None, db)
+    if not video.transcript:
+         raise HTTPException(status_code=404, detail="No transcript found for this video.")
+         
+    from app.services.openai_service import translate_transcript_to_english
+    translated_text = await translate_transcript_to_english(video.transcript)
+    return {"translated_text": translated_text}

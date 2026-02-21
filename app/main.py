@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.services.video_service import VideoError
+from app.services.extraction_service import ExtractionError
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -13,16 +16,32 @@ app = FastAPI(
 )
 
 # Set all CORS enabled origins
-if settings.CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.cors_origins_list],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[str(origin) for origin in settings.cors_origins_list],
+    allow_origin_regex='https?://.*',  # Allow all origins for POC/Development flexibility
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.exception_handler(VideoError)
+async def video_error_handler(request: Request, exc: VideoError):
+    return JSONResponse(
+        status_code=404,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ExtractionError)
+async def extraction_error_handler(request: Request, exc: ExtractionError):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)},
+    )
 
 
 @app.get("/")
