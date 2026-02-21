@@ -7,6 +7,17 @@ from app.core.config import settings
 from app.services.video_service import VideoError
 from app.services.extraction_service import ExtractionError
 
+import sentry_sdk
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.SENTRY_ENVIRONMENT,
+        traces_sample_rate=settings.SENTRY_TRACES_SAMPLE_RATE,
+        # Enable performance monitoring for FastAPI
+        send_default_pii=True,
+    )
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,

@@ -12,6 +12,14 @@ from structlog.stdlib import BoundLogger
 
 from app.core.config import settings
 
+try:
+    from sentry_sdk.integrations.logging import LoggingIntegration
+    import sentry_sdk
+    SENTRY_AVAILABLE = True
+except ImportError:
+    SENTRY_AVAILABLE = False
+
+
 
 # ===================================
 # STRUCTLOG PROCESSORS
@@ -83,6 +91,12 @@ def configure_logging():
         structlog.processors.StackInfoRenderer(),
         add_app_context,
     ]
+    
+    # Add Sentry processor if available
+    if SENTRY_AVAILABLE and settings.SENTRY_DSN:
+        from structlog_sentry import SentryProcessor
+        shared_processors.append(SentryProcessor(level=logging.ERROR))
+
     
     # Choose renderer based on environment
     if settings.is_development:
