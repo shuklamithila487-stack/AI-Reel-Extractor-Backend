@@ -52,11 +52,11 @@ def create_huey_instance():
                 'autorollback': True,
             }
 
-            # Managed Postgres services (Railway, Render External, Neon) usually require SSL
-            # Check if sslmode is in URL or if we are in production
+            # Managed Postgres services (Railway, Render, Neon) require SSL
+            # Pass sslmode directly as Peewee passes kwargs to psycopg2
             if "sslmode=require" in db_url or is_production:
-                db_params['connect_kwargs'] = {'sslmode': 'require'}
-                logger.info("Huey: Using SSL for PostgreSQL connection")
+                db_params['sslmode'] = 'require'
+                logger.info("Huey: Using SSL (sslmode=require) for PostgreSQL connection")
 
             # Create PEEWEE database instance
             db = PostgresqlDatabase(
