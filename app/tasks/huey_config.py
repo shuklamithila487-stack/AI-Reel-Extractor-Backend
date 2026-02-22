@@ -32,7 +32,6 @@ def create_huey_instance():
             msg = "PostgreSQL backend requested but 'peewee' or 'huey' sql dependencies missing. Please install huey[postgresql]."
             if is_production:
                 logger.error(msg)
-                # In production, we MUST not fallback silently to local SQLite if instances are separate
                 raise ImportError(msg)
             else:
                 logger.warning(f"{msg} Falling back to SQLite for local development.")
@@ -40,20 +39,29 @@ def create_huey_instance():
 
         try:
             # Parse DATABASE_URL to get connection parameters
-            parsed = urllib.parse.urlparse(settings.DATABASE_URL)
+            # Handle potential 'postgres://' vs 'postgresql://'
+            db_url = settings.DATABASE_URL.replace("postgres://", "postgresql://")
+            parsed = urllib.parse.urlparse(db_url)
             
-            # Create PEWEE database instance
-            # Note: We use psycopg2-binary which is compatible with peewee.PostgresqlDatabase
+            # Configure database connection parameters
+            db_params = {
+                'host': parsed.hostname,
+                'port': parsed.port or 5432,
+                'user': parsed.username,
+                'password': parsed.password,
+                'autorollback': True,
+            }
+
+            # Managed Postgres services (Railway, Render External, Neon) usually require SSL
+            # Check if sslmode is in URL or if we are in production
+            if "sslmode=require" in db_url or is_production:
+                db_params['connect_kwargs'] = {'sslmode': 'require'}
+                logger.info("Huey: Using SSL for PostgreSQL connection")
+
+            # Create PEEWEE database instance
             db = PostgresqlDatabase(
                 parsed.path.lstrip('/'),
-                host=parsed.hostname,
-                port=parsed.port or 5432,
-                user=parsed.username,
-                password=parsed.password,
-                autorollback=True,
-                # For Render/Production, SSL is usually required
-                # if "sslmode" in settings.DATABASE_URL or is_production:
-                #    connect_kwargs={'sslmode': 'require'}
+                **db_params
             )
             
             huey = SqlHuey(
@@ -72,7 +80,7 @@ def create_huey_instance():
         except Exception as e:
             logger.error("Failed to initialize Huey with PostgreSQL", error=str(e))
             if is_production:
-                # In production, a failed connection should stop the service rather than using a local disconnected queue
+                # In production, a failed connection should stop the service
                 raise RuntimeError(f"Could not connect Huey to PostgreSQL: {str(e)}")
             
             logger.warning("Falling back to SQLite for Huey local development.")
