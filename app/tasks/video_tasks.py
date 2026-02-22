@@ -13,9 +13,7 @@ from app.models import Video, Extraction, User
 from app.services import (
     cloudinary_service,
     sarvam_service,
-    sarvam_service,
     openai_service,
-    extraction_service,
     extraction_service,
     video_service,
     email_service,

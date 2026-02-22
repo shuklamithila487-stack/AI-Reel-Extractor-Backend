@@ -117,29 +117,6 @@ def delete_video(
     return {"success": True, "message": "Video deleted successfully", "video_id": video_id}
 
 
-@router.post("/{video_id}/extract", response_model=common.MessageResponse)
-def trigger_extraction(
-    video_id: str,
-    extraction_request: extraction_schemas.ExtractionRequest,
-    db: Session = Depends(deps.get_db),
-    current_user: models.User = Depends(deps.get_current_user),
-) -> Any:
-    """
-    Trigger data extraction for a video.
-    """
-    # Verify video exists
-    video = video_service.get_video_details(video_id, None, db)
-    
-    # Trigger background task
-    video_tasks.extract_data_task(
-        video_id, 
-        extraction_request.selected_columns,
-        str(current_user.id)
-    )
-    
-    return {"message": "Extraction started"}
-
-
 @router.post("/{video_id}/translate")
 async def translate_transcript(
     video_id: str,
