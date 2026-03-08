@@ -58,6 +58,39 @@ def drop_color_message_key(logger: Any, method_name: str, event_dict: dict) -> d
     return event_dict
 
 
+def write_to_video_log_file(logger: Any, method_name: str, event_dict: dict) -> dict:
+    """
+    Writes logs containing video_id to a specific video log file.
+    """
+    video_id = event_dict.get("video_id")
+    if video_id:
+        try:
+            import os, json
+            from datetime import datetime
+            
+            # Navigate to backend root directory
+            project_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            log_dir = os.path.join(project_dir, "logs", "videos")
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, f"{video_id}.log")
+            
+            # Form clean log line
+            timestamp = event_dict.get("timestamp", datetime.utcnow().isoformat())
+            level = event_dict.get("level", "INFO").upper()
+            event = event_dict.get("event", "")
+            
+            log_entry = {"timestamp": timestamp, "level": level, "event": event}
+            for k, v in event_dict.items():
+                if k not in ["timestamp", "level", "event", "color_message", "app", "environment"]:
+                    log_entry[k] = str(v)  # converting to string to be JSON serializable
+                    
+            with open(log_file, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception:
+            pass
+    return event_dict
+
+
 # ===================================
 # LOGGING CONFIGURATION
 # ===================================
@@ -90,6 +123,7 @@ def configure_logging():
         structlog.processors.TimeStamper(fmt="iso"),
         structlog.processors.StackInfoRenderer(),
         add_app_context,
+        write_to_video_log_file,
     ]
     
     # Add Sentry processor if available

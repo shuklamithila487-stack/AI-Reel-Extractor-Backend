@@ -1,6 +1,7 @@
 from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
 from app import models
 from app.api import deps
@@ -21,6 +22,36 @@ def get_upload_authorization(
     Generate a signed upload URL for Cloudinary.
     """
     return video_service.generate_upload_url(user_id=str(current_user.id), db=db)
+
+
+class ConfirmUploadRequest(BaseModel):
+    video_url: str
+    duration_seconds: Optional[int] = None
+    original_filename: Optional[str] = None
+
+
+@router.post("/{video_id}/confirm-upload", response_model=video_schemas.VideoStatus)
+def confirm_upload(
+    video_id: str,
+    payload: ConfirmUploadRequest,
+    db: Session = Depends(deps.get_db),
+    current_user: models.User = Depends(deps.get_current_user),
+) -> Any:
+    """
+    Called by frontend after a successful direct Cloudinary upload.
+    Updates the video record and triggers the processing pipeline.
+    This bypasses the Cloudinary webhook (which can't reach localhost in dev).
+    """
+    video_service.update_video_status(
+        video_id=video_id,
+        status="uploaded",
+        db=db,
+        video_url=payload.video_url,
+        duration_seconds=payload.duration_seconds,
+        original_filename=payload.original_filename,
+    )
+    video_tasks.process_video_pipeline(video_id)
+    return video_service.get_video_status(video_id=video_id, user_id=str(current_user.id), db=db)
 
 
 @router.post("/upload", response_model=video_schemas.VideoStatus)

@@ -34,7 +34,7 @@ class CloudinaryError(Exception):
 # UPLOAD MANAGEMENT
 # ===================================
 
-def generate_signed_upload_url(folder: str, public_id: str) -> Dict[str, Any]:
+def generate_signed_upload_url(folder: str, public_id: str, notification_url: str = None) -> Dict[str, Any]:
     """
     Generate signed upload parameters for client-side upload.
     """
@@ -44,8 +44,11 @@ def generate_signed_upload_url(folder: str, public_id: str) -> Dict[str, Any]:
             "timestamp": timestamp,
             "folder": folder,
             "public_id": public_id,
-            "resource_type": "video",
         }
+        
+        # Include notification_url in signature if provided
+        if notification_url:
+            params_to_sign["notification_url"] = notification_url
         
         signature = cloudinary.utils.api_sign_request(
             params_to_sign,
@@ -58,7 +61,7 @@ def generate_signed_upload_url(folder: str, public_id: str) -> Dict[str, Any]:
             "api_key": settings.CLOUDINARY_API_KEY,
         }
         
-        upload_url = f"https://api.cloudinary.com/v1_1/{settings.CLOUDINARY_CLOUD_NAME}/video/upload"  # Fixed URL structure
+        upload_url = f"https://api.cloudinary.com/v1_1/{settings.CLOUDINARY_CLOUD_NAME}/video/upload"
         
         return {
             "upload_url": upload_url,

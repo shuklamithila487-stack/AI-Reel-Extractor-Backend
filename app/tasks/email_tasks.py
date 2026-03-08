@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 # ===================================
 
 @task(retries=3, retry_delay=30)
-def send_verification_email_task(user_id: str, token: str):
+def send_verification_email_task(user_id: str, token: str, **kwargs):
     """
     Send email verification email.
     
@@ -69,7 +69,7 @@ def send_verification_email_task(user_id: str, token: str):
 
 
 @task(retries=3, retry_delay=30)
-def send_password_reset_email_task(user_id: str, token: str):
+def send_password_reset_email_task(user_id: str, token: str, **kwargs):
     """
     Send password reset email.
     
@@ -115,7 +115,7 @@ def send_password_reset_email_task(user_id: str, token: str):
 # ===================================
 
 @task(retries=3, retry_delay=30)
-def send_processing_complete_email_task(video_id: str, extraction_id: str):
+def send_processing_complete_email_task(video_id: str, extraction_id: str, **kwargs):
     """
     Send processing complete notification.
     
@@ -205,7 +205,7 @@ def send_processing_complete_email_task(video_id: str, extraction_id: str):
 
 
 @task(retries=3, retry_delay=30)
-def send_processing_failed_email_task(video_id: str, error_message: str):
+def send_processing_failed_email_task(video_id: str, error_message: str, **kwargs):
     """
     Send processing failed notification.
     
@@ -281,7 +281,7 @@ def send_processing_failed_email_task(video_id: str, error_message: str):
 # ===================================
 
 @periodic_task(crontab(day_of_week='0', hour='9', minute='0'))  # Every Sunday at 9 AM
-def send_weekly_summaries():
+def send_weekly_summaries(**kwargs):
     """
     Send weekly summary emails to all users who have enabled them.
     Runs every Sunday at 9 AM.
@@ -322,7 +322,7 @@ def send_weekly_summaries():
 
 
 @task(retries=2, retry_delay=60)
-def send_weekly_summary_email_task(user_id: str):
+def send_weekly_summary_email_task(user_id: str, **kwargs):
     """
     Send weekly summary to individual user.
     
@@ -397,7 +397,8 @@ def send_bulk_email_task(
     user_ids: list,
     subject: str,
     template_name: str,
-    context: Dict[str, Any]
+    context: Dict[str, Any],
+    **kwargs
 ):
     """
     Send bulk email to multiple users.

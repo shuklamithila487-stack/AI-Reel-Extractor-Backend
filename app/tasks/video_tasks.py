@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 # ===================================
 
 @task(retries=3, retry_delay=60)
-def process_video_pipeline(video_id: str):
+def process_video_pipeline(video_id: str, **kwargs):
     """
     Complete video processing pipeline:
     1. Extract audio from video
@@ -243,7 +243,7 @@ def process_video_pipeline(video_id: str):
 # ===================================
 
 @task(retries=3, retry_delay=60)
-def extract_data_task(video_id: str, selected_columns: List[str], user_id: str):
+def extract_data_task(video_id: str, selected_columns: List[str], user_id: str, **kwargs):
     """
     Extract data from video transcript with selected columns.
     
@@ -327,7 +327,7 @@ def extract_data_task(video_id: str, selected_columns: List[str], user_id: str):
 # ===================================
 
 @task()
-def handle_cloudinary_upload(video_id: str, video_url: str, metadata: dict):
+def handle_cloudinary_upload(video_id: str, video_url: str, metadata: dict, **kwargs):
     """
     Handle Cloudinary upload completion webhook.
     Updates video record and triggers processing.
@@ -378,7 +378,7 @@ def handle_cloudinary_upload(video_id: str, video_url: str, metadata: dict):
 # ===================================
 
 @task(retries=3, retry_delay=120)
-def retry_failed_video(video_id: str):
+def retry_failed_video(video_id: str, **kwargs):
     """
     Retry processing a failed video.
     
@@ -451,7 +451,7 @@ def _send_failure_notification(video: Video, error_message: str, db: Session):
     except Exception as e:
         logger.error("Failed to queue failure notification", error=str(e))
 @task()
-def sync_airtable_task(video_id: str):
+def sync_airtable_task(video_id: str, **kwargs):
     """
     Background task to sync current aggregated video data to Airtable.
     """

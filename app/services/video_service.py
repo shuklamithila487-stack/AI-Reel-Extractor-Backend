@@ -60,10 +60,8 @@ def generate_upload_url(user_id: str, db: Session) -> Dict[str, Any]:
         
         # Generate Cloudinary signed upload URL
         folder = f"pipeline/{video_id}"
-        upload_data = generate_signed_upload_url(folder, video_id)
-        
-        # Add notification URL for webhook
-        upload_data["notification_url"] = settings.get_cloudinary_webhook_url()
+        notification_url = settings.get_cloudinary_webhook_url()
+        upload_data = generate_signed_upload_url(folder, video_id, notification_url=notification_url)
         
         logger.info(
             "Upload URL generated",
@@ -74,7 +72,7 @@ def generate_upload_url(user_id: str, db: Session) -> Dict[str, Any]:
         return {
             "video_id": video_id,
             "upload_url": upload_data["upload_url"],
-            "upload_params": upload_data["upload_params"]
+            "upload_params": upload_data["upload_params"]  # notification_url is now inside upload_params
         }
         
     except Exception as e:
