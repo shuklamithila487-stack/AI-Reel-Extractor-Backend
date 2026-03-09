@@ -46,7 +46,7 @@ def generate_signed_upload_url(folder: str, public_id: str, notification_url: st
             "public_id": public_id,
         }
         
-        # Include notification_url in signature if provided
+        # Include notification_url in signature if provided and non-empty
         if notification_url:
             params_to_sign["notification_url"] = notification_url
         
